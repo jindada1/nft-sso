@@ -1,0 +1,15 @@
+# 协议类型，在容器运行客户端建议配置成 http
+protocol: "http"
+# 以太坊测试网 IP 地址
+host_ip_address: "127.0.0.1"
+# 以太坊测试网端口号
+port_number: "7545"
+
+# 合约地址
+contract_address: "0x6e8F30eD24913Ce153889DCd15347636f5C3bA19"
+# 账户地址列表
+account_addresses:
+  - "0xE3798ef61931573e607d5D22dFc4aBe92Ae098E9"
+  - "0x4550443A05f27d747c5FD0fa0b13b49E02c2A149"
+  - "0x9c7653C078be61C849C707dd3749a1D4EED07AAe"
+  - "0x2c500a893Dd5EfE2726E5B8D8E40020CffB3Dd70"
