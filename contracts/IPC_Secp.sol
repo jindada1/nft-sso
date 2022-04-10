@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "./Secp256k1.sol";
 
-contract IPC {
+contract IPC_Secp {
     
     Secp256k1 public secp = new Secp256k1();
 

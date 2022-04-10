@@ -28,63 +28,80 @@ contract('BN128.sol', (accounts) => {
 
     let result = []
 
-    it(`IPC Storage`, async () => {
+    // it(`IPC Storage`, async () => {
+    //     const ipc = await IPC.deployed();
+    //     let key = Alice.prikey;
+    //     let costs = []
+    //     let Declaration = ""
+    //     for (let index = 0; index < 32; index++) {
+    //         key = utils.sha256(key)
+    //         let store = await ipc.store_declaration.estimateGas(key, Declaration);
+    //         costs.push({
+    //             length: Declaration.length,
+    //             store: store - 21296,
+    //         })
+    //         Declaration += "ABBA"
+    //     }
+    //     console.table(costs)
+    // });
+
+    it(`IPC Query`, async () => {
         const ipc = await IPC.deployed();
         let key = Alice.prikey;
         let costs = []
         let Declaration = ""
         for (let index = 0; index < 32; index++) {
             key = utils.sha256(key)
-            let store = await ipc.store_declaration.estimateGas(key, Declaration);
             await ipc.store(key, D, s);
+            const query = await ipc.Query.estimateGas(key);
             costs.push({
                 length: Declaration.length,
-                store: store - 21296,
+                query: query - 21296,
             })
-            Declaration += "ABBA"
+            Declaration += "ABBAABBA"
         }
         console.table(costs)
     });
 
-    it(`verify, hash, eccMul, eccAdd`, async () => {
-        const ipc = await IPC.deployed();
+    // it(`verify, hash, eccMul, eccAdd`, async () => {
+    //     const ipc = await IPC.deployed();
 
-        /**
-         * @dev Login
-         * @notice 调用者链上登录
-         * @param s     -
-         * @param R     -
-         * @param UPK   - 用户公钥
-         * @param D     - Schnorr 签名：s, R, UPK
-         */
-        const login = await ipc.Login.estimateGas(s, R, Alice.pubkey, D);
-        /**
-         * @dev verifySchnorr
-         * @notice 验证 schnorr 签名
-         * @param s     -
-         * @param R     -
-         * @param UPK   - 用户公钥
-         * @param D     - Schnorr 签名：s, R, UPK, D
-         * @return bool - valid 
-         */
-        const verify = await ipc.verifySchnorr.estimateGas(s, R, Alice.pubkey, D);
+    //     /**
+    //      * @dev Login
+    //      * @notice 调用者链上登录
+    //      * @param s     -
+    //      * @param R     -
+    //      * @param UPK   - 用户公钥
+    //      * @param D     - Schnorr 签名：s, R, UPK
+    //      */
+    //     const login = await ipc.Login.estimateGas(s, R, Alice.pubkey, D);
+    //     /**
+    //      * @dev verifySchnorr
+    //      * @notice 验证 schnorr 签名
+    //      * @param s     -
+    //      * @param R     -
+    //      * @param UPK   - 用户公钥
+    //      * @param D     - Schnorr 签名：s, R, UPK, D
+    //      * @return bool - valid 
+    //      */
+    //     const verify = await ipc.verifySchnorr.estimateGas(s, R, Alice.pubkey, D);
 
-        const store = await ipc.store.estimateGas(Alice.prikey, D, s);
-        const hash = await ipc.hash.estimateGas(Alice.pubkey, D);
-        const eccMul = await ipc.eccMul.estimateGas(Alice.pubkey, Bob.prikey);
-        const eccAdd = await ipc.eccAdd.estimateGas(Alice.pubkey, Bob.pubkey);
-        const empty = await ipc.empty.estimateGas();
+    //     const store = await ipc.store.estimateGas(Alice.prikey, D, s);
+    //     const hash = await ipc.hash.estimateGas(Alice.pubkey, D);
+    //     const eccMul = await ipc.eccMul.estimateGas(Alice.pubkey, Bob.prikey);
+    //     const eccAdd = await ipc.eccAdd.estimateGas(Alice.pubkey, Bob.pubkey);
+    //     const empty = await ipc.empty.estimateGas();
 
-        result.push({
-            empty,
-            login: login - empty,
-            store: store - empty,
-            verify: verify - empty,
-            eccAdd: eccAdd - empty,
-            eccMul: eccMul - empty,
-            hash: hash - empty
-        })
-    });
+    //     result.push({
+    //         empty,
+    //         login: login - empty,
+    //         store: store - empty,
+    //         verify: verify - empty,
+    //         eccAdd: eccAdd - empty,
+    //         eccMul: eccMul - empty,
+    //         hash: hash - empty
+    //     })
+    // });
 
     after(`result`, async () => {
         // console.table(result);
@@ -92,6 +109,7 @@ contract('BN128.sol', (accounts) => {
 });
 
 /**
+Store
 ┌─────────┬────────┬────────┐
 │ (index) │ length │ store  │
 ├─────────┼────────┼────────┤
@@ -128,6 +146,43 @@ contract('BN128.sol', (accounts) => {
 │   30    │  120   │ 114644 │
 │   31    │  124   │ 114692 │
 └─────────┴────────┴────────┘
+Query
+┌─────────┬────────┬───────┐
+│ (index) │ length │ query │
+├─────────┼────────┼───────┤
+│    0    │   0    │ 6222  │
+│    1    │   8    │ 6222  │
+│    2    │   16   │ 6210  │
+│    3    │   24   │ 6222  │
+│    4    │   32   │ 6222  │
+│    5    │   40   │ 6222  │
+│    6    │   48   │ 6222  │
+│    7    │   56   │ 6210  │
+│    8    │   64   │ 6222  │
+│    9    │   72   │ 6222  │
+│   10    │   80   │ 6222  │
+│   11    │   88   │ 6222  │
+│   12    │   96   │ 6222  │
+│   13    │  104   │ 6222  │
+│   14    │  112   │ 6222  │
+│   15    │  120   │ 6222  │
+│   16    │  128   │ 6222  │
+│   17    │  136   │ 6210  │
+│   18    │  144   │ 6222  │
+│   19    │  152   │ 6222  │
+│   20    │  160   │ 6222  │
+│   21    │  168   │ 6222  │
+│   22    │  176   │ 6222  │
+│   23    │  184   │ 6222  │
+│   24    │  192   │ 6222  │
+│   25    │  200   │ 6222  │
+│   26    │  208   │ 6222  │
+│   27    │  216   │ 6222  │
+│   28    │  224   │ 6210  │
+│   29    │  232   │ 6222  │
+│   30    │  240   │ 6222  │
+│   31    │  248   │ 6222  │
+└─────────┴────────┴───────┘
 BN128
 ┌─────────┬───────┬───────┬───────┬────────┬────────┬────────┬──────┐
 │ (index) │ empty │ login │ store │ verify │ eccAdd │ eccMul │ hash │
