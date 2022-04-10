@@ -1,3 +1,5 @@
+var crypto = require("crypto");
+
 const prikeys = [
     "0xf086cff7f8f85b80d33aa34eb1f912407b613a63aaede6ff996ae79e037ed7a7",
     "0xccbd180f02d4ab3a824343d5d17cd408ca68b72d19a4a779386190fcac4c562d",
@@ -53,8 +55,6 @@ const decToHex = function (str) {
     }
     return hex.join('')
 }
-
-var crypto = require("crypto");
 
 /**
  * Generate random bytes and format to hex
@@ -137,8 +137,14 @@ const XOR = function (msg, key) {
     return "0x" + BigInt("0x" + resultBuf.toString('hex')).toString(16);
 };
 
+
+const sha256 = function sha256(data) {
+    return "0x" + crypto.createHash('sha256').update(data).digest('hex');
+}
+
 module.exports = {
     prikeys,
+    sha256,
     decToHex,
     asciiToHex,
     randomBytes,

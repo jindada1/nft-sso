@@ -10,49 +10,39 @@ contract('BN128.sol', (accounts) => {
             '0xf61e49162d395bc4fc10a6ea9825f8fa826b30e542ea4976753c8e0ffd565f1'
         ]
     }
-    let Bob = {
-        prikey: "0xb2bde437e0e2a93a1022cfbcb7772942999160b32bee53428d9baacec4c5629",
-        pubkey: [
-            '0x2979386fff5e9cd65422bea3dd1072ff943e66f8f2132bb0cb67e679210016ae',
-            '0x8dcc6f569a3f1df2f9bf2d98cd1386a9df0062357ad30d95215128a674ee140'
-        ]
-    }
+    let r = 333
 
     it(`Schnorr signature & verify`, async () => {
         const ipc = await IPC.deployed();
 
-        // 待加密的消息，时间戳
-        const M = 20220317;
+        // 待签名的声明
+        const D = "eyJleHAiOiAxNjUwODQ0ODAwfQ==";
 
         /**
          * @dev sigSchnorr
          * @notice 生成 schnorr 签名
          * @param sk    - 用户私钥
          * @param r     - 用户随机数
-         * @param M     - 待签名消息 M
-         * @return uint - c
-         * @return uint - e
+         * @param D     - 待签名消息 D
+         * @return uint256[2] - R
+         * @return uint256    - s
          */
-        let SSig = await ipc.sigSchnorr.call(Alice.prikey, 666, M);
-        const c = utils.bnToHex(SSig.c);
-        const e = utils.bnToHex(SSig.e);
-        
-        // console.log({c, e});
+        let SSig = await ipc.sigSchnorr.call(Alice.prikey, r, D);
+        const R = SSig.R.map(utils.bnToHex);
+        const s = utils.bnToHex(SSig.s);
+        console.log({R, s});
 
         /**
          * @dev verifySchnorr
          * @notice 验证 schnorr 签名
-         * @param c     -
-         * @param e     - e = (r - c*sk) mod order
-         * @param M     - Schnorr 签名：c，e，M
-         * @param PK    - 用户公钥
-         * @return uint - h
-         * @return uint - ekey
+         * @param s     -
+         * @param R     -
+         * @param UPK   - 用户公钥
+         * @param D     - Schnorr 签名：s, R, UPK, D
+         * @return bool - valid 
          */
-        const valid = await ipc.verifySchnorr.call(c, e, M, Alice.pubkey);
-        const gas_schnorr_verify = await ipc.verifySchnorr.estimateGas(c, e, M, Alice.pubkey);
-        console.log({gas_schnorr_verify});
-        // console.log({valid});
+        const valid = await ipc.verifySchnorr.call(s, R, Alice.pubkey, D);
+
         assert.equal(valid, true, 'Schnorr wrong answer');
     });
 

@@ -4,100 +4,112 @@ pragma experimental ABIEncoderV2;
 import "./BN128.sol";
 
 contract IPC {
-    mapping(uint256 => bytes) private logins;
+    mapping(uint256 => string) private declarations;
+    mapping(uint256 => uint256) private signatures;
 
     /**
-     * @dev Issue
-     * @notice 为调用者颁发凭证
-     * @param c     -
-     * @param e     -
-     * @param M     - Schnorr 签名：c，e，M
+     * @dev Login
+     * @notice 调用者链上登录
+     * @param s     -
+     * @param R     -
      * @param UPK   - 用户公钥
-     * @return uint256    - h
-     * @return uint256[2] - Rkey
+     * @param D     - Schnorr 签名：s, R, UPK
      */
-    function Issue(
-        uint256 c,
-        uint256 e,
-        uint256 M,
-        uint256[2] memory UPK
-    ) public payable returns (uint256 h, uint256[2] memory Rkey) {
+    function Login(
+        uint256 s,
+        uint256[2] memory R,
+        uint256[2] memory UPK,
+        string memory D
+    ) public payable {
         // 验证来自客户端的签名
-        require(verifySchnorr(c, e, M, UPK));
-        // 请求随机数
-        uint256 r = 6;
-        // 计算 rkey = Hash(UPK || r)
-        uint256 rkey = hash(UPK, r);
-        // ECDH 算法，计算 rkey 对应的公钥 Rkey = rkey * G
-        Rkey = eccPub(rkey);
-        // 计算对称加密的密钥 key = rkey * UPK
-        uint256 key = (eccMul(UPK, rkey))[0];
-        // 编码 encode(UPK，key，M) = C 用户凭据信息
-        // 用 Hash(UPK || key) 加密 C = EC
-        bytes memory EC = encrypt(
-            encode(UPK, key, M),
-            hash(UPK, key)
-        );
-        // 添加进 logins[hash(EC)] = EC
-        h = uint256(keccak256(EC));
-        logins[h] = EC;
+        require(verifySchnorr(s, R, UPK, D));
+        uint256 key = hash(R, D);
+        declarations[key] = D;
+        signatures[key] = s;
+    }
+
+    function store(
+        uint256 key,
+        string memory D,
+        uint256 s
+    ) public payable {
+        declarations[key] = D;
+        signatures[key] = s;
+    }
+
+    function store_declaration(
+        uint256 key,
+        string memory D
+    ) public payable {
+        declarations[key] = D;
     }
 
     /**
-     * @dev Verify
-     * @notice 验证来自客户端的凭证
-     * @param h     -
-     * @param k     -
-     * @param EDAID - Schnorr 签名：c，e，M
-     * @param PPK   - 平台公钥
-     * @return uint256    - DAID
+     * @dev sigSchnorr
+     * @notice 生成 schnorr 签名
+     * @param sk    - 用户私钥
+     * @param r     - 用户随机数
+     * @param D     - 待签名消息 D
+     * @return uint256[2] - R
+     * @return uint256    - s
      */
-    function Verify(
-        uint256 h,
-        uint256 k,
-        uint256 EDAID,
-        uint256[2] memory PPK
-    ) public payable returns (uint256 DAID) {
-        // 解密
-        bytes memory C = decrypt(logins[h], k);
-        uint256 UPK; uint256 key; uint256 M;
-        // 解码
-        (UPK, key, M) = decode(C);
-        DAID = EDAID ^ key;
+    function sigSchnorr(
+        uint256 sk,
+        uint256 r,
+        string memory D
+    ) public payable returns (uint256[2] memory R, uint256 s) {
+        // R = r*G
+        R = eccPub(r);
+        // key = Hash(D, R[0])
+        uint256 key = hash(R, D);
+        // s = r + key*sk
+        s = eccAddMod(r, eccMulMod(key, sk));
     }
 
     /**
      * @dev verifySchnorr
      * @notice 验证 schnorr 签名
-     * @param c     -
-     * @param e     - e = (r - c*sk) mod order
-     * @param M     - Schnorr 签名：c，e，M
-     * @param PK    - 用户公钥
-     * @return uint - h
-     * @return uint - ekey
+     * @param s     -
+     * @param R     -
+     * @param UPK   - 用户公钥
+     * @param D     - Schnorr 签名：s, R, UPK, D
+     * @return bool - valid
      */
     function verifySchnorr(
-        uint256 c,
-        uint256 e,
-        uint256 M,
-        uint256[2] memory PK
-    ) public payable returns (bool valid) {
-        // R' = e*G + (c * PK)
-        uint256[2] memory R = eccAdd(eccPub(e), eccMul(PK, c));
-        // c ?= Hash(M, R'[0])
-        return c == uint256(keccak256(abi.encodePacked(M, R[0])));
+        uint256 s,
+        uint256[2] memory R,
+        uint256[2] memory UPK,
+        string memory D
+    ) public payable returns (bool) {
+        // s*G ?= R + Hash(D, R[0])*UPK
+        uint256[2] memory S = eccPub(s);
+        uint256[2] memory right = eccAdd(R, eccMul(UPK, hash(R, D)));
+
+        return S[0] == right[0];
     }
 
-    function empty() public view {}
-
     // 测试用
-    function ec(uint256 h) public view returns (bytes memory) {
-        return logins[h];
+    function Query(uint256 key)
+        public
+        view
+        returns (string memory D, uint256 s)
+    {
+        D = declarations[key];
+        s = signatures[key];
     }
 
     // 计算 Hash（PK || a）
-    function hash(uint256[2] memory PK, uint256 a) public pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(PK[0], a)));
+    function hash(uint256[2] memory P, string memory s)
+        public
+        pure
+        returns (uint256)
+    {
+        return uint256(keccak256(abi.encodePacked(P[0], s)));
+    }
+
+    // (a + b) mod order
+    function eccAddMod(uint256 a, uint256 b) public pure returns (uint256) {
+        return BN128.ECCAddMod(a, b);
     }
 
     // (a - b) mod order
@@ -133,85 +145,5 @@ contract IPC {
         return BN128.ECCAdd(A, B);
     }
 
-    // 编码，将传入的 uint256 拼接成一串 bytes，每个 uint256 占 32 bytes
-    function encode(
-        uint256[2] memory PK,
-        uint256 key,
-        uint256 M
-    ) public pure returns (bytes memory) {
-        return abi.encodePacked(PK[0], key, M);
-    }
-
-    // 解码，编码的逆操作
-    function decode(bytes memory b)
-        public
-        pure
-        returns (
-            uint256 PK,
-            uint256 key,
-            uint256 M
-        )
-    {
-        PK = slice(b, 0);
-        key = slice(b, 32);
-        M = slice(b, 64);
-    }
-
-    // bytes 切片
-    function slice(bytes memory a, uint256 offset)
-        public
-        pure
-        returns (uint256)
-    {
-        bytes32 out;
-        for (uint256 i = 0; i < 32; i++) {
-            out |= bytes32(a[offset + i] & 0xFF) >> (i * 8);
-        }
-        return uint256(out);
-    }
-
-    // 加密
-    function encrypt(bytes memory bs, uint256 key)
-        public
-        pure
-        returns (bytes memory)
-    {
-        // 异或 xor 加密
-        uint256 A = key ^ slice(bs, 0);
-        uint256 B = key ^ slice(bs, 32);
-        uint256 C = key ^ slice(bs, 64);
-
-        return abi.encodePacked(A, B, C);
-    }
-
-    // 解密
-    function decrypt(bytes memory bs, uint256 key)
-        public
-        pure
-        returns (bytes memory)
-    {
-        return encrypt(bs, key);
-    }
-
-    /**
-     * @dev sigSchnorr
-     * @notice 生成 schnorr 签名
-     * @param sk    - 用户私钥
-     * @param r     - 用户随机数
-     * @param M     - 待签名消息 M
-     * @return uint - c
-     * @return uint - e
-     */
-    function sigSchnorr(
-        uint256 sk,
-        uint256 r,
-        uint256 M
-    ) public payable returns (uint256 c, uint256 e) {
-        // R = r*G
-        uint256[2] memory R = eccPub(r);
-        // c = Hash(M, R[0])
-        c = uint256(keccak256(abi.encodePacked(M, R[0])));
-        // e = r - c*sk
-        e = eccSubMod(r, eccMulMod(c, sk));
-    }
+    function empty() public view {}
 }

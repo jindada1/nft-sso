@@ -8,8 +8,8 @@ Note over SP: 生成 PUID
 SP-->用户: PUID，PPK
 Note over 用户: 生成 DA 标识串 DAID
 用户->DAMC: PUID，PPK，DAID
-Note over DAMC: 创建 id 为 DAID 的 NFT \n 将 PUID 和 PPK 写入 NFT 字段 \n  NFT{ id: DAID, owner: UPK, PUID, PPK}
-DAMC->用户: 创建成
+Note over DAMC: 创建 NFT \n  tokenId = DAID \n tokenUri = encode(PPK,PUID)
+DAMC->用户: 创建成功
 ```
 
 
@@ -83,19 +83,20 @@ Note over 用户: 保留 key 和凭证 h, k
 验证凭证
 
 ```sequence
-Note over 用户: 选择该SP对应的 DAID
-Note over 用户: 用密钥 key 对称加密 DAID => EDAID
+Note over 用户: 选择 DAID
+Note over 用户: 用key加密DAID -> EDAID
 用户-->SP: h, k, EDAID
 SP->IPC: h, k, EDAID, PPK
-Note over IPC: 根据索引 h 找到 EC \n 用 k 解密并解码 EC 得到用户元信息 C
-Note over IPC: 根据 expire 字段检查是否过期 \n 未过期使用 key 解密 EDAID 得到 DAID
-Note over IPC: 根据 DAID 查找 NFT \n 验证 NFT.owner == UPK \n 验证 NFT.PPK == PPK
-Note over IPC: 返回 NFT.SUID => SUID
+Note over IPC: 根据索引 h 找到 EC \n 用 k 解密并解码 EC \n 得到凭证信息 C
+Note over IPC: 检查 EC 是否过期 \n 未过期 \n 用 key 解密 EDAID -> DAID
+IPC->DAMC: DAID
+Note over DAMC: 检索 DA 的 tokenUri \n 解析 owner,PPK,SUID
+DAMC->IPC: owner, PPK
+Note over IPC: 验证 owner == address(UPK) \n 验证 PPK == PPK
 IPC->SP: SUID
-Note over SP: 生成 SUID 用户的 token
+Note over SP: 生成SUID账户的token
 SP-->用户: token
-Note over 用户: 保存该SP的 token
-Note over 用户: 调用该SP API 时携带此 token
+Note over 用户: 保存该 token
 ```
 
 ## 实验报告

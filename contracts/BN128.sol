@@ -165,6 +165,11 @@ library BN128 {
         return mulmod(a, b, GEN_ORDER);
     }
 
+    // (a + b)  mod order
+    function ECCAddMod(uint256 a, uint256 b) public pure returns (uint256) {
+        return addmod(a, b, GEN_ORDER);
+    }
+
     // (a - b)  mod order
     function ECCSubMod(uint256 a, uint256 b) public pure returns (uint256) {
         return submod(a, b);
